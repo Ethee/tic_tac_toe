@@ -2,16 +2,19 @@
 
 # defines how to play
 class Game
+  @board = 0
   @player2 = 0
-  @player_x = 0
-  @board = GameState.new()
   def initialize
+    @board = GameState.new
+  end
+
+  def new_game
     puts 'Welcome to Tic-Tac-Toe!'
     puts 'Would you like to play with another player, or against the computer?'
     puts 'Please enter 1 for player, 2 for computer:'
     # 2 player or 1 vs AI
     @player2 = gets.to_i
-    until [1, 2].includes?(@player2)
+    until [1, 2].include?(@player2)
       puts "That's not what I asked for."
       puts 'Please enter 1 for player, 2 for computer:'
       @player2 = gets.to_i
@@ -20,106 +23,152 @@ class Game
     if @player2 == 2
       puts 'Who will play X and go first?'
       puts 'Please enter 1 for yourself, 2 for the computer, or 3 to flip a coin.'
-      @player_x = gets.to_i
-      until [1..3].includes?(@player_x)
+      player_x = gets.to_i
+      until [1..3].include?(player_x)
         puts "That's not what I asked for."
         puts 'Please enter 1 for yourself, 2 for the computer, or 3 to flip a coin.'
-        @player_x = gets.to_i
+        player_x = gets.to_i
       end
     else
-      @player_x = 1
+      player_x = 1
     end
-    if @player_x == 3
+    if player_x == 3
       coin = Random.new
       winner = ['you', 'the computer']
-      @player_x = coin.rand(2) + 1
-      puts "Looks like #{winner[@player_x - 1]} won the coin toss #{winner[@player_x - 1]} will go first."
+      player_x = coin.rand(2) + 1
+      puts "Looks like #{winner[player_x - 1]} won the coin toss #{winner[player_x - 1]} will go first."
     end
-    self.game_loop
+    player_x -= 1
+    game_loop(player_x)
   end
 
-  def game_loop
+  def win_check
+    case @board.winner
+    when -1
+      puts 'O has won the game!'
+    when 0
+      puts 'The game was a draw'
+    when 1
+      puts 'X has won the game!'
+    else
+      return
+    end
+    puts 'Would you like to play again?'
+    puts 'Type 1 for yes, 2 to quit.'
+    response = gets
+    return Game.new.new_game if response.to_i == 1
+
+    exit
+  end
+
+  def change_turn(shape)
+    return 0 if shape == 1
+    return 1 if shape.zero?
+  end
+
+  def game_loop(shape)
+    shape = change_turn(shape)
+    @board.display_board
+    win_check
     # if 2 players each take turns
-    if player2 == 1
-      self.player_play
+    if @player2 == 1
+      player_play(shape)
     # else AI takes turns
     else
-      if player_x == 1
-        self.player_play
+      if player_x == 1 && shape == 1
+        player_play(shape)
       else
-        self.computer_play
+        computer_play(shape)
       end
     end
   end
 
-  def player_play
-    player = ['X', 'O']
-    puts "Please enter a position to place an #{player[@player_x - 1]}"
+  def player_play(shape)
+    convert = %w[X O]
+    puts "Please enter a position to place an #{convert[shape]}"
     move = gets
-    unless [1..9].includes?(move)
+    unless (1..9).include?(move.to_i)
       puts "That's not what I asked for."
-      puts "Please enter a position to place an #{player[@player_x - 1]}"
+      puts "Please enter a position to place an #{convert[shape]}"
+      move = gets
     end
-    board.make_move(move, @player_x)
-    if @player_x == 1
-      @player_x += 1
-    else
-      @player_x -+1
+    begin
+      @board.make_move(move, convert[shape])
+    rescue StandardError
+      puts 'Someone has already moved there! Try again:'
+      move = gets
+      retry
     end
-    board.winner
-    self.game_loop
+    game_loop(shape)
   end
-
-  def computer_play 
-    # minimax algorithm
-    if board.winner
-    end
 end
 
 # defines the board
 class GameState
   @position = []
-  @winning_positions = [0, 0, 0, 0, 0, 0, 0, 0]
+  @winning_positions = []
   def initialize
-    @position = [1..9]
+    @position = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+    # array of winning positions sorted by row, column, diagonal respectively
+    @winning_positions = [0, 0, 0, 0, 0, 0, 0, 0]
   end
 
   def display_board
-    [1..3].each do |i|
-      puts '----------------'
-      puts "| #{@position[1 * i]} | #{@position[2 * i]} | #{@position[3 * i]} |"
+    (0..2).each do |i|
+      puts '-------------'
+      puts "| #{@position[3 * i]} | #{@position[3 * i + 1]} | #{@position[3 * i + 2]} |"
     end
-    puts '----------------'
+    puts '-------------'
   end
 
-  public
-
   def make_move(position, player)
-    if player = 1
-      @position[position] = 'X'
-    else
-      @position[position] = 'O'
+    raise unless @position[position.to_i - 1].is_a? Numeric
+
+    @position[position.to_i - 1] = player
+    index = []
+    case position.to_i
+    when 1
+      index = [0, 3, 6]
+    when 2
+      index = [0, 4]
+    when 3
+      index = [0, 5, 7]
+    when 4
+      index = [1, 3]
+    when 5
+      index = [1, 4, 6, 7]
+    when 6
+      index = [1, 5]
+    when 7
+      index = [2, 3, 7]
+    when 8
+      index = [2, 4]
+    when 9
+      index = [2, 5, 6]
     end
-    display_board
-    winner
+    if player == 'X'
+      index.each do |i|
+        @winning_positions[i] += 1
+      end
+    else
+      index.each do |i|
+        @winning_positions[i] -= 1
+      end
+    end
+    puts @winning_positions
   end
 
   def winner
     @winning_positions.each do |result|
-      if result == 3
-        return 1
-      elsif result == -3
-        return -1
-      end
+      return 1 if result.to_i == 3
+      return -1 if result.to_i == -3
     end
+    count = 0
     @position.each do |draw|
-      if draw.is_a? Numeric
-        break
-      else
-        return 0
-      end
+      count += 1 unless draw.is_a? Numeric
     end
+    return 0 if count == 9
   end
 end
 
-Game.new
+Game.new.new_game
