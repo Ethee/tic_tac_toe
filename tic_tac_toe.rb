@@ -4,6 +4,7 @@
 class Game
   @board = 0
   @player2 = 0
+  @first_turn = 0
   def initialize
     @board = GameState.new
   end
@@ -23,23 +24,23 @@ class Game
     if @player2 == 2
       puts 'Who will play X and go first?'
       puts 'Please enter 1 for yourself, 2 for the computer, or 3 to flip a coin.'
-      player_x = gets.to_i
-      until [1..3].include?(player_x)
+      @first_turn = gets.to_i
+      until (1..3).include?(@first_turn)
         puts "That's not what I asked for."
         puts 'Please enter 1 for yourself, 2 for the computer, or 3 to flip a coin.'
-        player_x = gets.to_i
+        @first_turn = gets.to_i
       end
     else
-      player_x = 1
+      @first_turn = 1
     end
-    if player_x == 3
+    if @first_turn == 3
       coin = Random.new
       winner = ['you', 'the computer']
-      player_x = coin.rand(2) + 1
-      puts "Looks like #{winner[player_x - 1]} won the coin toss #{winner[player_x - 1]} will go first."
+      @first_turn = coin.rand(2) + 1
+      puts "Looks like #{winner[@first_turn - 1]} won the coin toss #{winner[@first_turn - 1]} will go first."
     end
-    player_x -= 1
-    game_loop(player_x)
+    shape = 1
+    game_loop(shape)
   end
 
   def win_check
@@ -75,7 +76,7 @@ class Game
       player_play(shape)
     # else AI takes turns
     else
-      if player_x == 1 && shape == 1
+      if @first_turn == 1
         player_play(shape)
       else
         computer_play(shape)
@@ -93,24 +94,36 @@ class Game
       move = gets
     end
     begin
-      @board.make_move(move, convert[shape])
+      @board.position_check(move)
     rescue StandardError
       puts 'Someone has already moved there! Try again:'
       move = gets
       retry
     end
+    @board.make_move(move, convert[shape])
     game_loop(shape)
+  end
+
+  def computer_play(shape)
+    convert = %w[X O]
+    cur_board = @board.position
+    @board.make_move(minimax(cur_board, _, true), convert[shape])
   end
 end
 
 # defines the board
 class GameState
+  attr_reader :position
   @position = []
   @winning_positions = []
   def initialize
     @position = [1, 2, 3, 4, 5, 6, 7, 8, 9]
     # array of winning positions sorted by row, column, diagonal respectively
     @winning_positions = [0, 0, 0, 0, 0, 0, 0, 0]
+  end
+
+  def position_check(position)
+    raise unless @position[position.to_i - 1].is_a? Numeric
   end
 
   def display_board
@@ -122,9 +135,11 @@ class GameState
   end
 
   def make_move(position, player)
-    raise unless @position[position.to_i - 1].is_a? Numeric
-
     @position[position.to_i - 1] = player
+    score_keeper(position, player)
+  end
+
+  def score_keeper(position, player, board=@winning_positions)
     index = []
     case position.to_i
     when 1
@@ -148,18 +163,17 @@ class GameState
     end
     if player == 'X'
       index.each do |i|
-        @winning_positions[i] += 1
+        board[i] += 1
       end
     else
       index.each do |i|
-        @winning_positions[i] -= 1
+        board[i] -= 1
       end
     end
-    puts @winning_positions
   end
 
-  def winner
-    @winning_positions.each do |result|
+  def winner(win_condition = @winning_positions)
+    win_condition.each do |result|
       return 1 if result.to_i == 3
       return -1 if result.to_i == -3
     end
@@ -168,6 +182,26 @@ class GameState
       count += 1 unless draw.is_a? Numeric
     end
     return 0 if count == 9
+  end
+
+  def minimax(board, win_condition = @winning_positions, computer = true)
+    score = winner(win_condition)
+    return 1 if score == 1
+    return -1 if score == -1
+    return 0 unless board.each(&:zero?)
+
+    (0..8).each do |i|
+      next unless board[i].zero?
+
+      new_board = win_condition
+      if computer
+        best = -2
+        best = max(best, minimax(board, new_board, !computer))
+      else
+        best = 2
+        best = min(best, minimax(board, new_board, !computer))
+      end
+    end
   end
 end
 
