@@ -22,6 +22,8 @@ class Game
     end
     # if AI decide who plays first
     if @player2 == 2
+      puts 'Sorry, computer play is not available at the moment.'
+      /
       puts 'Who will play X and go first?'
       puts 'Please enter 1 for yourself, 2 for the computer, or 3 to flip a coin.'
       @first_turn = gets.to_i
@@ -30,6 +32,9 @@ class Game
         puts 'Please enter 1 for yourself, 2 for the computer, or 3 to flip a coin.'
         @first_turn = gets.to_i
       end
+      /
+      @player2 = 1
+      @first_turn = 1
     else
       @first_turn = 1
     end
@@ -193,7 +198,6 @@ class GameState
     (0..8).each do |i|
       next unless board[i].zero?
 
-      new_board = win_condition
       if computer
         best = -2
         best = max(best, minimax(board, new_board, !computer))
@@ -202,6 +206,7 @@ class GameState
         best = min(best, minimax(board, new_board, !computer))
       end
     end
+    best
   end
 end
 
